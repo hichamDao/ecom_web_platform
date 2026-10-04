@@ -1,0 +1,32 @@
+# Les fichiers déposés dans ce dossier ne doivent jamais être exécutés.
+# (Défense en profondeur : Upload::image() n'accepte que des extensions d'image
+#  et génère des noms aléatoires, mais une faille resterait bloquée ici.)
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>
+
+<FilesMatch "\.(php|phtml|phar|php3|php4|php5|php7|php8|pl|py|cgi|asp|aspx|sh)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Les images sont servies telles quelles.
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .phar
+    RemoveType .php .phtml .phar
+</IfModule>

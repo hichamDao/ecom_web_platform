@@ -1,0 +1,93 @@
+# =============================================================================
+# ecom_web_platform — routage Apache
+# À placer à la racine du projet, à côté de index.php.
+# Nécessite mod_rewrite (activé par défaut sous XAMPP / WAMP).
+# =============================================================================
+
+DirectoryIndex index.php
+
+# --- Interdiction d'accès direct au code et aux données -----------------------
+# Empêche la lecture de config/, app/, database/ et des fichiers .sql depuis
+# le navigateur, y compris si mod_rewrite est désactivé.
+<IfModule mod_authz_core.c>
+    <FilesMatch "(^\.|composer\.(json|lock)|\.(sql|log|ini|lock|md)$)">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "(^\.|composer\.(json|lock)|\.(sql|log|ini|lock|md)$)">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# --- Encodage ----------------------------------------------------------------
+<IfModule mod_mime.c>
+    AddDefaultCharset UTF-8
+    AddType image/svg+xml .svg
+    AddType application/json .json
+</IfModule>
+
+# --- Mise en cache des ressources statiques -----------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                "access plus 7 days"
+    ExpiresByType application/javascript  "access plus 7 days"
+    ExpiresByType image/jpeg              "access plus 30 days"
+    ExpiresByType image/png               "access plus 30 days"
+    ExpiresByType image/webp              "access plus 30 days"
+    ExpiresByType image/gif               "access plus 30 days"
+    ExpiresByType image/svg+xml           "access plus 30 days"
+</IfModule>
+
+# --- En-têtes de sécurité et CORS de l'API -----------------------------------
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|jpg|jpeg|png|webp|gif|svg|woff2?)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Autorise l'application Flutter à consommer l'API depuis n'importe quelle origine.
+    Header always set Access-Control-Allow-Origin  "*"
+    Header always set Access-Control-Allow-Headers "Authorization, Content-Type, Accept"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+</IfModule>
+
+# --- Compression --------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# --- Limites d'upload (les fichiers volumineux sont rejetés avant PHP) ---------
+<IfModule mod_php.c>
+    php_value upload_max_filesize 4M
+    php_value post_max_size 8M
+    php_value max_execution_time 60
+</IfModule>
+
+# --- Routage ------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Forcer le HTTPS en production (décommentez et adaptez si nécessaire).
+    # RewriteCond %{HTTPS} !=on
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Les fichiers et dossiers existants sont servis directement :
+    # public/assets/**, public/uploads/**, index.php, api/index.php…
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # L'API a son propre point d'entrée (elle ne doit jamais être servie par index.php).
+    RewriteRule ^api(?:/.*)?$ api/index.php [L,QSA]
+
+    # Tout le reste est confié au routeur PHP.
+    RewriteRule ^ index.php [L,QSA]
+</IfModule>
